@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.bianca.moneymind"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.bianca.moneymind"
