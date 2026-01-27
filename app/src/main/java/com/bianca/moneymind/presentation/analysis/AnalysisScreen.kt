@@ -206,8 +206,8 @@ private fun AnalysisContent(
             )
         }
 
-        // Monthly Trend Chart (for Year view) - 只顯示支出趨勢
-        if (uiState.selectedTimeRange == TimeRange.YEAR && uiState.monthlyTrend.isNotEmpty()) {
+        // Monthly Trend Chart - 一直顯示月度支出趨勢
+        if (uiState.monthlyTrend.isNotEmpty()) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -227,6 +227,7 @@ private fun AnalysisContent(
 
                         MonthlyTrendChart(
                             data = uiState.monthlyTrend,
+                            selectedMonth = uiState.selectedMonth,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

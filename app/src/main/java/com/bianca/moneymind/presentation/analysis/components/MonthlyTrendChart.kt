@@ -56,7 +56,8 @@ data class MonthlyTrendData(
 @Composable
 fun MonthlyTrendChart(
     data: List<MonthlyTrendData>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedMonth: YearMonth? = null
 ) {
     if (data.isEmpty()) {
         return
@@ -67,7 +68,13 @@ fun MonthlyTrendChart(
     val expenseColor = Color(0xFFE53935)
     val incomeColor = Color(0xFF43A047)
 
-    var selectedData by remember { mutableStateOf<MonthlyTrendData?>(null) }
+    // 預設選中當月的資料
+    var selectedData by remember(data, selectedMonth) {
+        val defaultSelected = selectedMonth?.let { month ->
+            data.find { it.month == month }
+        }
+        mutableStateOf(defaultSelected)
+    }
 
     LaunchedEffect(data) {
         modelProducer.runTransaction {
@@ -75,7 +82,7 @@ fun MonthlyTrendChart(
                 series(data.map { it.expense })
             }
         }
-        selectedData = null
+        // 不重置 selectedData，保持預設選中狀態
     }
 
     // 簡化的 Marker，只偵測點擊位置

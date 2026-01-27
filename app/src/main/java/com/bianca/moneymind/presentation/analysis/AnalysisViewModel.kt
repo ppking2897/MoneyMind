@@ -268,6 +268,17 @@ class AnalysisViewModel @Inject constructor(
             emptyList()
         }
 
+        // 在月視圖也生成近 6 個月的月度趨勢資料（使用上面已宣告的 currentYearMonth）
+        val mockMonthlyTrendForMonth = (-5..0).map { offset ->
+            val trendMonth = month.plusMonths(offset.toLong())
+            val hasData = !trendMonth.isAfter(currentYearMonth)
+            MonthlyTrendData(
+                month = trendMonth,
+                expense = if (hasData) (8000..20000).random().toDouble() else 0.0,
+                income = if (hasData) 45000.0 else 0.0
+            )
+        }
+
         _uiState.value = AnalysisUiState(
             isLoading = false,
             selectedTimeRange = TimeRange.MONTH,
@@ -279,7 +290,7 @@ class AnalysisViewModel @Inject constructor(
             categoryIncomes = mockIncomeCategories,
             dailyExpenses = mockDailyExpenses,
             dailyIncomes = mockDailyIncomes,
-            monthlyTrend = emptyList()
+            monthlyTrend = mockMonthlyTrendForMonth
         )
     }
 
