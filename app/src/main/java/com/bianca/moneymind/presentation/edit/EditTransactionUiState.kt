@@ -1,10 +1,11 @@
-package com.bianca.moneymind.presentation.manual
+package com.bianca.moneymind.presentation.edit
 
 import com.bianca.moneymind.domain.model.Category
 import com.bianca.moneymind.domain.model.TransactionType
 import java.time.LocalDate
 
-data class ManualInputUiState(
+data class EditTransactionUiState(
+    val isLoading: Boolean = true,
     val transactionType: TransactionType = TransactionType.EXPENSE,
     val amount: String = "",
     val description: String = "",
@@ -12,9 +13,12 @@ data class ManualInputUiState(
     val date: LocalDate = LocalDate.now(),
     val note: String = "",
     val categories: List<Category> = emptyList(),
-    val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
     val isSaved: Boolean = false,
-    val error: String? = null
+    val isDeleted: Boolean = false,
+    val showDeleteDialog: Boolean = false,
+    val error: String? = null,
+    val notFound: Boolean = false
 ) {
     companion object {
         private val mockCategories = listOf(
@@ -24,21 +28,19 @@ data class ManualInputUiState(
             Category("expense_entertainment", "娛樂", "sports_esports", "#9C27B0", TransactionType.EXPENSE, null, true, 4)
         )
 
-        fun mock() = ManualInputUiState(
+        fun mock() = EditTransactionUiState(
+            isLoading = false,
             transactionType = TransactionType.EXPENSE,
             amount = "85",
             description = "午餐便當",
             selectedCategory = mockCategories.first(),
             date = LocalDate.now(),
             note = "",
-            categories = mockCategories,
-            isLoading = false
+            categories = mockCategories
         )
 
-        fun mockWithCategories() = ManualInputUiState(
-            transactionType = TransactionType.EXPENSE,
-            categories = mockCategories,
-            isLoading = false
+        fun mockLoading() = EditTransactionUiState(
+            isLoading = true
         )
     }
 }

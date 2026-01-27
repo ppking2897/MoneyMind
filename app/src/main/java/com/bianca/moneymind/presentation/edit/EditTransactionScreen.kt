@@ -1,6 +1,7 @@
-package com.bianca.moneymind.presentation.manual
+package com.bianca.moneymind.presentation.edit
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,17 +15,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -38,11 +41,13 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -55,11 +60,12 @@ import com.bianca.moneymind.ui.theme.MoneyMindTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManualInputScreen(
+fun EditTransactionScreen(
     onNavigateBack: () -> Unit,
-    onTransactionSaved: () -> Unit,
+    onTransactionUpdated: () -> Unit,
+    onTransactionDeleted: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ManualInputViewModel = hiltViewModel()
+    viewModel: EditTransactionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -67,7 +73,14 @@ fun ManualInputScreen(
     // Handle saved state
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
-            onTransactionSaved()
+            onTransactionUpdated()
+        }
+    }
+
+    // Handle deleted state
+    LaunchedEffect(uiState.isDeleted) {
+        if (uiState.isDeleted) {
+            onTransactionDeleted()
         }
     }
 
@@ -79,7 +92,15 @@ fun ManualInputScreen(
         }
     }
 
-    ManualInputContent(
+    // Handle not found
+    LaunchedEffect(uiState.notFound) {
+        if (uiState.notFound) {
+            snackbarHostState.showSnackbar("找不到交易記錄")
+            onNavigateBack()
+        }
+    }
+
+    EditTransactionContent(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onNavigateBack = onNavigateBack,
@@ -90,14 +111,17 @@ fun ManualInputScreen(
         onDateChange = viewModel::onDateChange,
         onNoteChange = viewModel::onNoteChange,
         onSaveClick = viewModel::saveTransaction,
+        onDeleteClick = viewModel::showDeleteDialog,
+        onDeleteConfirm = viewModel::deleteTransaction,
+        onDeleteDismiss = viewModel::hideDeleteDialog,
         modifier = modifier
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ManualInputContent(
-    uiState: ManualInputUiState,
+private fun EditTransactionContent(
+    uiState: EditTransactionUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateBack: () -> Unit,
     onTransactionTypeChange: (TransactionType) -> Unit,
@@ -107,6 +131,9 @@ private fun ManualInputContent(
     onDateChange: (LocalDate) -> Unit,
     onNoteChange: (String) -> Unit,
     onSaveClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDeleteConfirm: () -> Unit,
+    onDeleteDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 日期選擇器狀態
@@ -142,22 +169,43 @@ private fun ManualInputContent(
             DatePicker(state = datePickerState)
         }
     }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("手動輸入") },
+                title = { Text("編輯記錄") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onDeleteClick) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "刪除",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        modifier = modifier
     ) { innerPadding ->
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
+
         Column(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp)
@@ -252,11 +300,30 @@ private fun ManualInputContent(
             // Save Button
             Button(
                 onClick = onSaveClick,
-                enabled = !uiState.isLoading,
+                enabled = !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (uiState.isLoading) "儲存中..." else "儲存")
+                Text(if (uiState.isSaving) "儲存中..." else "儲存")
             }
+        }
+
+        // Delete Confirmation Dialog
+        if (uiState.showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = onDeleteDismiss,
+                title = { Text("確認刪除") },
+                text = { Text("確定要刪除這筆交易記錄嗎？此操作無法復原。") },
+                confirmButton = {
+                    TextButton(onClick = onDeleteConfirm) {
+                        Text("刪除", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDeleteDismiss) {
+                        Text("取消")
+                    }
+                }
+            )
         }
     }
 }
@@ -266,10 +333,10 @@ private fun ManualInputContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
-private fun ManualInputContentPreview() {
+private fun EditTransactionContentPreview() {
     MoneyMindTheme {
-        ManualInputContent(
-            uiState = ManualInputUiState.mock(),
+        EditTransactionContent(
+            uiState = EditTransactionUiState.mock(),
             snackbarHostState = SnackbarHostState(),
             onNavigateBack = {},
             onTransactionTypeChange = {},
@@ -278,7 +345,10 @@ private fun ManualInputContentPreview() {
             onCategorySelect = {},
             onDateChange = {},
             onNoteChange = {},
-            onSaveClick = {}
+            onSaveClick = {},
+            onDeleteClick = {},
+            onDeleteConfirm = {},
+            onDeleteDismiss = {}
         )
     }
 }
@@ -286,10 +356,10 @@ private fun ManualInputContentPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
-private fun ManualInputContentEmptyPreview() {
+private fun EditTransactionContentLoadingPreview() {
     MoneyMindTheme {
-        ManualInputContent(
-            uiState = ManualInputUiState.mockWithCategories(),
+        EditTransactionContent(
+            uiState = EditTransactionUiState.mockLoading(),
             snackbarHostState = SnackbarHostState(),
             onNavigateBack = {},
             onTransactionTypeChange = {},
@@ -298,7 +368,10 @@ private fun ManualInputContentEmptyPreview() {
             onCategorySelect = {},
             onDateChange = {},
             onNoteChange = {},
-            onSaveClick = {}
+            onSaveClick = {},
+            onDeleteClick = {},
+            onDeleteConfirm = {},
+            onDeleteDismiss = {}
         )
     }
 }
