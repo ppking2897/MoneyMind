@@ -57,6 +57,9 @@ fun NavGraph(
                 onTransactionClick = { transactionId ->
                     navController.navigate(Screen.EditTransaction.createRoute(transactionId))
                 },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.BudgetSetting.route)
+                },
                 modifier = bottomNavModifier
             )
         }

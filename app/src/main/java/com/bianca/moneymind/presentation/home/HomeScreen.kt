@@ -65,6 +65,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HomeScreen(
     onTransactionClick: (String) -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -82,6 +83,7 @@ fun HomeScreen(
             uiState = uiState,
             onTransactionClick = onTransactionClick,
             onPeriodSelected = viewModel::onPeriodSelected,
+            onNavigateToSettings = onNavigateToSettings,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -92,6 +94,7 @@ private fun HomeContent(
     uiState: HomeUiState,
     onTransactionClick: (String) -> Unit,
     onPeriodSelected: (TimePeriod) -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (uiState.isLoading) {
@@ -115,15 +118,21 @@ private fun HomeContent(
             )
         }
 
-        // Budget Card
+        // Budget Card or Budget Setup Prompt
         item {
-            BudgetCard(
-                periodLabel = uiState.periodLabel,
-                periodExpense = uiState.periodExpense,
-                budget = uiState.budget,
-                progress = uiState.budgetProgress,
-                percentage = uiState.budgetPercentage
-            )
+            if (uiState.hasBudgetSet && uiState.budget > 0) {
+                BudgetCard(
+                    periodLabel = uiState.periodLabel,
+                    periodExpense = uiState.periodExpense,
+                    budget = uiState.budget,
+                    progress = uiState.budgetProgress,
+                    percentage = uiState.budgetPercentage
+                )
+            } else {
+                BudgetSetupPrompt(
+                    onSetupClick = onNavigateToSettings
+                )
+            }
         }
 
         // Transactions by Date
@@ -365,6 +374,46 @@ private fun getCategoryIcon(iconName: String?): ImageVector {
 }
 
 @Composable
+private fun BudgetSetupPrompt(
+    onSetupClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        onClick = onSetupClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.TrendingUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "設定每月預算",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "追蹤支出，讓記帳更有目標",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun EmptyState() {
     Column(
         modifier = Modifier
@@ -394,7 +443,8 @@ private fun HomeContentPreview() {
         HomeContent(
             uiState = HomeUiState.mock(),
             onTransactionClick = {},
-            onPeriodSelected = {}
+            onPeriodSelected = {},
+            onNavigateToSettings = {}
         )
     }
 }
@@ -406,7 +456,8 @@ private fun HomeContentLoadingPreview() {
         HomeContent(
             uiState = HomeUiState(isLoading = true),
             onTransactionClick = {},
-            onPeriodSelected = {}
+            onPeriodSelected = {},
+            onNavigateToSettings = {}
         )
     }
 }
@@ -418,7 +469,21 @@ private fun HomeContentEmptyPreview() {
         HomeContent(
             uiState = HomeUiState(isLoading = false),
             onTransactionClick = {},
-            onPeriodSelected = {}
+            onPeriodSelected = {},
+            onNavigateToSettings = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HomeContentNoBudgetPreview() {
+    MoneyMindTheme {
+        HomeContent(
+            uiState = HomeUiState(isLoading = false, hasBudgetSet = false, budget = 0.0),
+            onTransactionClick = {},
+            onPeriodSelected = {},
+            onNavigateToSettings = {}
         )
     }
 }

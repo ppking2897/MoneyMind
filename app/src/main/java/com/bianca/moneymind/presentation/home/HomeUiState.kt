@@ -59,7 +59,8 @@ data class HomeUiState(
     val currentMonth: YearMonth = YearMonth.now(),
     val periodExpense: Double = 0.0,
     val periodIncome: Double = 0.0,
-    val budget: Double = 20000.0, // TODO: Load from settings
+    val budget: Double = 20000.0,
+    val hasBudgetSet: Boolean = true,
     val transactionsWithCategory: Map<LocalDate, List<TransactionWithCategory>> = emptyMap()
 ) {
     val budgetProgress: Float
