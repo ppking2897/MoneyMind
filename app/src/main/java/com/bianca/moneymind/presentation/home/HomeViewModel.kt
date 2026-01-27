@@ -90,8 +90,51 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refresh() {
-        _uiState.update { it.copy(isLoading = true, error = null) }
-        loadTransactions()
+        _uiState.update { it.copy(isRefreshing = true, error = null) }
+        loadJob?.cancel()
+
+        val period = _uiState.value.selectedPeriod
+        val (startDate, endDate) = period.getDateRange()
+
+        loadJob = viewModelScope.launch {
+            combine(
+                getTransactionsUseCase.byDateRange(startDate, endDate),
+                getCategoriesUseCase()
+            ) { transactions, categories ->
+                val categoryMap = categories.associateBy { it.id }
+
+                // Calculate totals for the period
+                val periodExpense = transactions
+                    .filter { it.type == TransactionType.EXPENSE }
+                    .sumOf { it.amount }
+
+                val periodIncome = transactions
+                    .filter { it.type == TransactionType.INCOME }
+                    .sumOf { it.amount }
+
+                // Group transactions with category by date
+                val transactionsWithCategory = transactions.map { tx ->
+                    TransactionWithCategory(tx, categoryMap[tx.categoryId])
+                }.groupBy { it.transaction.date }
+                    .toSortedMap(reverseOrder())
+
+                Triple(periodExpense, periodIncome, transactionsWithCategory)
+            }
+                .catch { e ->
+                    _uiState.update { it.copy(isRefreshing = false, error = e.message) }
+                }
+                .collect { (periodExpense, periodIncome, transactionsWithCategory) ->
+                    _uiState.update {
+                        it.copy(
+                            isRefreshing = false,
+                            currentMonth = YearMonth.now(),
+                            periodExpense = periodExpense,
+                            periodIncome = periodIncome,
+                            transactionsWithCategory = transactionsWithCategory
+                        )
+                    }
+                }
+        }
     }
 
     fun clearError() {

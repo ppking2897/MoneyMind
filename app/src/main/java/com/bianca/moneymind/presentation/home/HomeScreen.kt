@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.ShoppingBag
@@ -44,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -56,6 +58,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bianca.moneymind.domain.model.Category
 import com.bianca.moneymind.domain.model.TransactionType
+import com.bianca.moneymind.presentation.components.EmptyStateView
 import java.time.LocalDate
 import androidx.compose.ui.tooling.preview.Preview
 import com.bianca.moneymind.ui.theme.MoneyMindTheme
@@ -78,12 +81,17 @@ fun HomeScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        HomeContent(
-            uiState = uiState,
-            onTransactionClick = onTransactionClick,
-            onPeriodSelected = viewModel::onPeriodSelected,
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = viewModel::refresh,
             modifier = Modifier.padding(innerPadding)
-        )
+        ) {
+            HomeContent(
+                uiState = uiState,
+                onTransactionClick = onTransactionClick,
+                onPeriodSelected = viewModel::onPeriodSelected
+            )
+        }
     }
 }
 
@@ -129,7 +137,11 @@ private fun HomeContent(
         // Transactions by Date
         if (uiState.transactionsWithCategory.isEmpty()) {
             item {
-                EmptyState()
+                EmptyStateView(
+                    title = "還沒有交易記錄",
+                    description = "開始記錄您的第一筆支出吧！",
+                    icon = Icons.Default.Receipt
+                )
             }
         } else {
             uiState.transactionsWithCategory.forEach { (date, transactionsWithCategory) ->
@@ -364,26 +376,6 @@ private fun getCategoryIcon(iconName: String?): ImageVector {
     }
 }
 
-@Composable
-private fun EmptyState() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "尚無交易記錄",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "點擊下方 + 開始記帳",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
 
 // ==================== Preview ====================
 

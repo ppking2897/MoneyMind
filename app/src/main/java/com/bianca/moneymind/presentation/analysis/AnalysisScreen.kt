@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -63,6 +64,7 @@ import com.bianca.moneymind.presentation.analysis.components.MonthlyTrendChart
 import com.bianca.moneymind.presentation.analysis.components.PieChart
 import com.bianca.moneymind.presentation.analysis.components.PieChartLegend
 import com.bianca.moneymind.presentation.analysis.components.toPieSlices
+import com.bianca.moneymind.presentation.components.EmptyStateView
 import com.bianca.moneymind.ui.theme.MoneyMindTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,6 +148,9 @@ private fun AnalysisContent(
         return
     }
 
+    // Check if there's enough data for analysis
+    val hasData = uiState.totalExpense > 0 || uiState.totalIncome > 0
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -193,6 +198,18 @@ private fun AnalysisContent(
                     }
                 }
             }
+        }
+
+        // Empty state when no data
+        if (!hasData) {
+            item {
+                EmptyStateView(
+                    title = "沒有足夠的資料進行分析",
+                    description = "開始記錄交易後，這裡會顯示您的消費分析",
+                    icon = Icons.Default.Analytics
+                )
+            }
+            return@LazyColumn
         }
 
         // Summary Card
