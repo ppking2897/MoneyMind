@@ -96,6 +96,64 @@ class HistoryViewModel @Inject constructor(
         loadTransactions()
     }
 
+    fun refresh() {
+        _uiState.update { it.copy(isRefreshing = true, error = null) }
+        viewModelScope.launch {
+            combine(
+                getTransactionsUseCase(),
+                getCategoriesUseCase()
+            ) { transactions, categories ->
+                val categoryMap = categories.associateBy { it.id }
+                val filter = _uiState.value.selectedFilter
+                val query = _uiState.value.searchQuery
+
+                // Apply filter
+                val filtered = transactions.filter { txn ->
+                    val matchesFilter = when (filter) {
+                        TransactionFilter.ALL -> true
+                        TransactionFilter.EXPENSE -> txn.type == TransactionType.EXPENSE
+                        TransactionFilter.INCOME -> txn.type == TransactionType.INCOME
+                    }
+                    val matchesQuery = query.isEmpty() ||
+                            txn.description.contains(query, ignoreCase = true) ||
+                            txn.merchantName?.contains(query, ignoreCase = true) == true
+
+                    matchesFilter && matchesQuery
+                }
+
+                // Map to TransactionWithCategory and group by date
+                val grouped = filtered
+                    .map { txn -> TransactionWithCategory(txn, categoryMap[txn.categoryId]) }
+                    .groupBy { it.transaction.date }
+                    .map { (date, txnsWithCategory) ->
+                        val dailyTotal = txnsWithCategory.sumOf { txnWithCategory ->
+                            val txn = txnWithCategory.transaction
+                            if (txn.type == TransactionType.EXPENSE) -txn.amount else txn.amount
+                        }
+                        DailyTransactions(
+                            date = date,
+                            transactionsWithCategory = txnsWithCategory.sortedByDescending { it.transaction.createdAt },
+                            dailyTotal = dailyTotal
+                        )
+                    }
+                    .sortedByDescending { it.date }
+
+                grouped
+            }
+                .catch { e ->
+                    _uiState.update { it.copy(isRefreshing = false, error = e.message) }
+                }
+                .collect { grouped ->
+                    _uiState.update {
+                        it.copy(
+                            isRefreshing = false,
+                            dailyTransactions = grouped
+                        )
+                    }
+                }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

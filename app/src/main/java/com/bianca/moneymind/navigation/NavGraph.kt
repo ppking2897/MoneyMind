@@ -1,5 +1,9 @@
 package com.bianca.moneymind.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -39,6 +43,9 @@ import com.bianca.moneymind.presentation.settings.categories.ManageCategoriesScr
 import com.bianca.moneymind.presentation.settings.rules.LearnedRulesScreen
 import com.bianca.moneymind.presentation.settings.theme.ThemeSettingScreen
 
+// Animation constants
+private const val ANIMATION_DURATION = 300
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavGraph(
@@ -47,7 +54,35 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Home.route,
+        enterTransition = {
+            fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(ANIMATION_DURATION)
+                )
+        },
+        exitTransition = {
+            fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(ANIMATION_DURATION)
+                )
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(ANIMATION_DURATION)) +
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(ANIMATION_DURATION)
+                )
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(ANIMATION_DURATION)) +
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(ANIMATION_DURATION)
+                )
+        }
     ) {
         // Bottom Navigation Screens (需要 bottom padding)
         val bottomNavModifier = Modifier.padding(bottom = bottomPadding)

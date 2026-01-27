@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.TrendingUp
@@ -43,6 +44,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -55,6 +57,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bianca.moneymind.domain.model.TransactionType
+import com.bianca.moneymind.presentation.components.EmptyStateView
 import com.bianca.moneymind.presentation.home.TransactionWithCategory
 import com.bianca.moneymind.ui.theme.MoneyMindTheme
 import java.time.LocalDate
@@ -77,13 +80,18 @@ fun HistoryScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        HistoryContent(
-            uiState = uiState,
-            onSearchQueryChange = viewModel::onSearchQueryChange,
-            onFilterChange = viewModel::onFilterChange,
-            onTransactionClick = onTransactionClick,
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = viewModel::refresh,
             modifier = Modifier.padding(innerPadding)
-        )
+        ) {
+            HistoryContent(
+                uiState = uiState,
+                onSearchQueryChange = viewModel::onSearchQueryChange,
+                onFilterChange = viewModel::onFilterChange,
+                onTransactionClick = onTransactionClick
+            )
+        }
     }
 }
 
@@ -148,18 +156,11 @@ private fun HistoryContent(
         // Transaction List by Date
         if (uiState.dailyTransactions.isEmpty()) {
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "尚無交易記錄",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                EmptyStateView(
+                    title = "找不到符合條件的交易",
+                    description = if (uiState.searchQuery.isNotEmpty()) "請嘗試其他搜尋關鍵字" else null,
+                    icon = Icons.Default.SearchOff
+                )
             }
         } else {
             uiState.dailyTransactions.forEach { daily ->

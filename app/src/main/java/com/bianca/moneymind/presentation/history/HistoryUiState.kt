@@ -20,6 +20,7 @@ data class DailyTransactions(
 
 data class HistoryUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val searchQuery: String = "",
     val selectedFilter: TransactionFilter = TransactionFilter.ALL,

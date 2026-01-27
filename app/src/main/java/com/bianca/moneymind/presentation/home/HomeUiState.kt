@@ -54,6 +54,7 @@ enum class TimePeriod(val displayName: String) {
 
 data class HomeUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val selectedPeriod: TimePeriod = TimePeriod.THIS_MONTH,
     val currentMonth: YearMonth = YearMonth.now(),
