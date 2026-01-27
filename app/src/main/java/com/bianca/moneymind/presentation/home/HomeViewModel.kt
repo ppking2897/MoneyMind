@@ -3,6 +3,7 @@ package com.bianca.moneymind.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bianca.moneymind.domain.model.TransactionType
+import com.bianca.moneymind.domain.repository.SettingsRepository
 import com.bianca.moneymind.domain.usecase.GetCategoriesUseCase
 import com.bianca.moneymind.domain.usecase.GetTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,7 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getTransactionsUseCase: GetTransactionsUseCase,
-    private val getCategoriesUseCase: GetCategoriesUseCase
+    private val getCategoriesUseCase: GetCategoriesUseCase,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -29,7 +31,21 @@ class HomeViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
+        loadBudgetSetting()
         loadTransactions()
+    }
+
+    /**
+     * Load budget setting from repository
+     */
+    private fun loadBudgetSetting() {
+        viewModelScope.launch {
+            settingsRepository.monthlyBudget
+                .catch { /* Use default budget on error */ }
+                .collect { budget ->
+                    _uiState.update { it.copy(budget = budget, hasBudgetSet = budget > 0) }
+                }
+        }
     }
 
     /**

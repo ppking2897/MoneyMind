@@ -1,6 +1,5 @@
 package com.bianca.moneymind.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +9,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.bianca.moneymind.domain.model.ThemeMode
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -33,19 +33,32 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+/**
+ * MoneyMind Theme with ThemeMode support
+ *
+ * @param themeMode The theme mode from settings (SYSTEM, LIGHT, DARK)
+ * @param dynamicColor Whether to use Material You dynamic colors (Android 12+)
+ * @param content The composable content
+ */
 @Composable
 fun MoneyMindTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val systemDarkTheme = isSystemInDarkTheme()
+
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> systemDarkTheme
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
@@ -56,3 +69,4 @@ fun MoneyMindTheme(
         content = content
     )
 }
+

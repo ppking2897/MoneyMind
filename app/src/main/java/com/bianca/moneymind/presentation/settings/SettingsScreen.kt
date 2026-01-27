@@ -128,6 +128,8 @@ fun SettingsScreen(
         modifier = modifier
     ) { innerPadding ->
         SettingsContent(
+            currentBudgetDisplay = uiState.currentBudgetDisplay,
+            currentThemeLabel = uiState.currentThemeLabel,
             onNavigateToCategories = onNavigateToCategories,
             onNavigateToRules = onNavigateToRules,
             onNavigateToBudget = onNavigateToBudget,
@@ -142,6 +144,8 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsContent(
+    currentBudgetDisplay: String,
+    currentThemeLabel: String,
     onNavigateToCategories: () -> Unit,
     onNavigateToRules: () -> Unit,
     onNavigateToBudget: () -> Unit,
@@ -163,7 +167,7 @@ private fun SettingsContent(
                 SettingsItem(
                     icon = Icons.Default.ColorLens,
                     title = "主題模式",
-                    subtitle = "跟隨系統",
+                    subtitle = currentThemeLabel,
                     onClick = onNavigateToTheme
                 )
             }
@@ -194,7 +198,7 @@ private fun SettingsContent(
                 SettingsItem(
                     icon = Icons.Default.Savings,
                     title = "每月預算",
-                    subtitle = "$20,000",
+                    subtitle = currentBudgetDisplay,
                     onClick = onNavigateToBudget
                 )
             }
@@ -325,6 +329,8 @@ private fun SettingsItem(
 private fun SettingsContentPreview() {
     MoneyMindTheme {
         SettingsContent(
+            currentBudgetDisplay = "$20,000",
+            currentThemeLabel = "跟隨系統",
             onNavigateToCategories = {},
             onNavigateToRules = {},
             onNavigateToBudget = {},
