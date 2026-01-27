@@ -55,4 +55,8 @@ class TransactionRepositoryImpl @Inject constructor(
     override suspend fun delete(id: String) {
         transactionDao.delete(id)
     }
+
+    override suspend fun deleteAll() {
+        transactionDao.deleteAll()
+    }
 }

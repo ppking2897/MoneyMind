@@ -6,6 +6,24 @@ import com.bianca.moneymind.domain.model.Transaction
 import com.bianca.moneymind.domain.model.TransactionType
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+
+/**
+ * Convert epoch day value to LocalDate with fallback for milliseconds
+ * Some legacy data may have been stored as milliseconds instead of epoch days
+ */
+private fun parseDate(value: Long): LocalDate {
+    // Epoch days for year 3000 would be around 376000
+    // If value is larger, it's likely milliseconds
+    return if (value > 1_000_000) {
+        // Value is probably milliseconds, convert to LocalDate
+        Instant.ofEpochMilli(value)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    } else {
+        LocalDate.ofEpochDay(value)
+    }
+}
 
 fun TransactionEntity.toDomain(): Transaction = Transaction(
     id = id,
@@ -13,7 +31,7 @@ fun TransactionEntity.toDomain(): Transaction = Transaction(
     amount = amount,
     description = description,
     categoryId = categoryId,
-    date = LocalDate.ofEpochDay(date),
+    date = parseDate(date),
     createdAt = Instant.ofEpochMilli(createdAt),
     inputType = InputType.valueOf(inputType),
     receiptImagePath = receiptImagePath,

@@ -16,4 +16,8 @@ class GetCategoriesUseCase @Inject constructor(
     fun byType(type: TransactionType): Flow<List<Category>> {
         return categoryRepository.getByType(type)
     }
+
+    suspend fun byId(id: String): Category? {
+        return categoryRepository.getById(id)
+    }
 }
