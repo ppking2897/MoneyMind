@@ -3,70 +3,86 @@ package com.bianca.moneymind.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bianca.moneymind.domain.model.TransactionType
+import com.bianca.moneymind.domain.usecase.GetCategoriesUseCase
 import com.bianca.moneymind.domain.usecase.GetTransactionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val getTransactionsUseCase: GetTransactionsUseCase
+    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val getCategoriesUseCase: GetCategoriesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         loadTransactions()
     }
 
-    private fun loadTransactions() {
-        val currentMonth = YearMonth.now()
-        val startOfMonth = currentMonth.atDay(1)
-        val endOfMonth = currentMonth.atEndOfMonth()
+    /**
+     * Select a different time period
+     */
+    fun onPeriodSelected(period: TimePeriod) {
+        if (period == _uiState.value.selectedPeriod) return
 
-        viewModelScope.launch {
-            getTransactionsUseCase.byDateRange(startOfMonth, endOfMonth)
+        _uiState.update { it.copy(selectedPeriod = period, isLoading = true) }
+        loadTransactions()
+    }
+
+    private fun loadTransactions() {
+        loadJob?.cancel()
+
+        val period = _uiState.value.selectedPeriod
+        val (startDate, endDate) = period.getDateRange()
+
+        loadJob = viewModelScope.launch {
+            combine(
+                getTransactionsUseCase.byDateRange(startDate, endDate),
+                getCategoriesUseCase()
+            ) { transactions, categories ->
+                val categoryMap = categories.associateBy { it.id }
+
+                // Calculate totals for the period
+                val periodExpense = transactions
+                    .filter { it.type == TransactionType.EXPENSE }
+                    .sumOf { it.amount }
+
+                val periodIncome = transactions
+                    .filter { it.type == TransactionType.INCOME }
+                    .sumOf { it.amount }
+
+                // Group transactions with category by date
+                val transactionsWithCategory = transactions.map { tx ->
+                    TransactionWithCategory(tx, categoryMap[tx.categoryId])
+                }.groupBy { it.transaction.date }
+                    .toSortedMap(reverseOrder())
+
+                Triple(periodExpense, periodIncome, transactionsWithCategory)
+            }
                 .catch { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
                 }
-                .collect { transactions ->
-                    val today = LocalDate.now()
-
-                    // Calculate monthly totals
-                    val monthlyExpense = transactions
-                        .filter { it.type == TransactionType.EXPENSE }
-                        .sumOf { it.amount }
-
-                    val monthlyIncome = transactions
-                        .filter { it.type == TransactionType.INCOME }
-                        .sumOf { it.amount }
-
-                    // Group transactions by date (recent 7 days)
-                    val recentDates = (0..6).map { today.minusDays(it.toLong()) }
-                    val recentTransactions = transactions
-                        .filter { it.date in recentDates }
-                        .groupBy { it.date }
-                        .toSortedMap(reverseOrder())
-
-                    // Today's transactions
-                    val todayTransactions = transactions.filter { it.date == today }
-
+                .collect { (periodExpense, periodIncome, transactionsWithCategory) ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            currentMonth = currentMonth,
-                            monthlyExpense = monthlyExpense,
-                            monthlyIncome = monthlyIncome,
-                            todayTransactions = todayTransactions,
-                            recentTransactions = recentTransactions
+                            currentMonth = YearMonth.now(),
+                            periodExpense = periodExpense,
+                            periodIncome = periodIncome,
+                            transactionsWithCategory = transactionsWithCategory
                         )
                     }
                 }
