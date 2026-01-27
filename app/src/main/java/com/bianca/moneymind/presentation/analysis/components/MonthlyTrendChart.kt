@@ -152,7 +152,7 @@ fun MonthlyTrendChart(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "$${String.format("%,.0f", selected.expense)}",
+                                    text = "$${String.format("%,d", selected.expense.toInt())}",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = expenseColor
@@ -165,7 +165,7 @@ fun MonthlyTrendChart(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "$${String.format("%,.0f", selected.income)}",
+                                    text = "$${String.format("%,d", selected.income.toInt())}",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = incomeColor
@@ -179,7 +179,7 @@ fun MonthlyTrendChart(
                                 )
                                 val balance = selected.income - selected.expense
                                 Text(
-                                    text = "${if (balance >= 0) "+" else ""}$${String.format("%,.0f", balance)}",
+                                    text = "${if (balance >= 0) "+" else ""}$${String.format("%,d", balance.toInt())}",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = if (balance >= 0) incomeColor else expenseColor
