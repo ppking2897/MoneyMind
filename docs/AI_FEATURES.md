@@ -161,92 +161,133 @@ val questionTemplates = mapOf(
 
 ---
 
-## 2. OCR 收據掃描
+## 2. 收據掃描 (Gemini Vision)
 
 ### 2.1 處理流程
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      OCR 處理流程                                │
+│                    收據掃描處理流程 (Gemini Vision)               │
 └─────────────────────────────────────────────────────────────────┘
 
     用戶拍照
         │
         ▼
- ┌─────────────┐
- │  ML Kit OCR  │  ← 離線、免費、快速
- └─────────────┘
+ ┌─────────────────┐
+ │   圖片壓縮        │  ← 最大 1024px，保持比例
+ └─────────────────┘
+        │
+        ▼
+ ┌─────────────────┐
+ │  Gemini Vision  │  ← 直接理解圖片內容
+ │  content {      │
+ │    image(bitmap)│
+ │    text(prompt) │
+ │  }              │
+ └─────────────────┘
         │
         ▼
  ┌─────────────────────────────────┐
- │  提取的原始文字                   │
- │  "全家便利商店                    │
- │   2026/01/21 14:32              │
- │   拿鐵咖啡     45               │
- │   合計         45"              │
+ │  結構化資料                       │
+ │  {                              │
+ │    merchantName: "全家",         │
+ │    totalAmount: 45,             │
+ │    date: "2026-01-21",          │
+ │    suggestedCategoryId: "...",  │
+ │    confidence: 0.9              │
+ │  }                              │
  └─────────────────────────────────┘
         │
         ▼
- ┌─────────────┐
- │ Gemini API  │  ← 解析結構化資料
- └─────────────┘
-        │
-        ▼
- 顯示確認摘要 → 儲存（不保存照片）
+ 顯示確認/編輯卡片 → 儲存（不保存照片）
 ```
 
-### 2.2 為什麼用混合方案？
+### 2.2 為什麼改用 Gemini Vision？
 
-- ML Kit 離線快速，節省 Gemini 額度
-- Gemini 專注在「理解」而非「識別」
-- 離線時至少能提取文字，上線後再解析
+原本設計：`圖片 → ML Kit OCR → 文字 → Gemini 解析`
+
+**實際採用**：`圖片 → Gemini Vision 直接辨識`
+
+| 比較項目 | ML Kit + 文字解析 | Gemini Vision |
+|----------|-------------------|---------------|
+| 準確度 | 依賴 OCR 品質 | 直接理解圖片 |
+| 雜訊處理 | OCR 會辨識所有文字 | AI 自動過濾不重要的 |
+| 排版理解 | 失去排版資訊 | 能看到「合計」在哪裡 |
+| Token 消耗 | 傳大量文字 | 圖片壓縮後較少 |
+| 複雜度 | 兩步驟 | 一步驟 |
 
 ### 2.3 收據解析 Prompt
 
-```text
-你是收據解析助手。根據 OCR 提取的收據文字，解析出結構化資料。
+```kotlin
+fun buildReceiptImagePrompt(categories: List<Category>): String {
+    val categoryList = categories
+        .filter { it.type.name == "EXPENSE" }
+        .take(8)
+        .joinToString(", ") { "${it.id}:${it.name}" }
 
-## OCR 文字
-```
-{ocrText}
+    return """
+看這張收據/發票圖片，提取以下資訊：
+1. 商家名稱
+2. 總金額（找「合計」「總計」「Total」等）
+3. 日期（民國年請轉西元年）
+
+可用類別：$categoryList
+
+回傳純 JSON（不要 markdown）：
+{"merchantName":"商家名","totalAmount":123,"date":"2024-01-15","suggestedCategoryId":"類別ID","confidence":0.9}
+
+如果看不清楚某欄位，該欄位填 null。
+""".trimIndent()
+}
 ```
 
-## 輸出格式 (JSON)
-{
-  "merchant": "商家名稱",
-  "date": "YYYY-MM-DD" | null,
-  "items": [
-    { "name": "品項", "price": number }
-  ],
-  "total": number,
-  "confidence": 0.0-1.0
+### 2.4 圖片壓縮
+
+```kotlin
+companion object {
+    // Gemini 對 1024px 處理效果好
+    private const val MAX_IMAGE_DIMENSION = 1024
 }
 
-## 規則
-1. 金額優先找「合計」「總計」「Total」
-2. 日期可能是民國年（如 113/01/21），轉成西元
-3. total 必須有值，否則 confidence < 0.5
-4. 回傳純 JSON
+private fun compressImage(bitmap: Bitmap): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+
+    if (width <= MAX_IMAGE_DIMENSION && height <= MAX_IMAGE_DIMENSION) {
+        return bitmap
+    }
+
+    val scaleFactor = MAX_IMAGE_DIMENSION.toFloat() / max(width, height)
+    val newWidth = (width * scaleFactor).toInt()
+    val newHeight = (height * scaleFactor).toInt()
+
+    return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+}
 ```
 
-### 2.4 設計決策
+### 2.5 設計決策
 
 | 決策項目 | 選擇 | 原因 |
 |----------|------|------|
-| OCR 引擎 | ML Kit (離線) + Gemini (解析) | 離線可用 + 智能解析 |
-| 多品項處理 | 合併成一筆 | 簡化 MVP |
+| 辨識方式 | Gemini Vision 直接看圖 | 準確度更高 |
+| 圖片大小 | 壓縮至 1024px | 避免 token 超限 |
+| 多品項處理 | 只取總金額 | 簡化 MVP |
 | 照片保存 | 不保存 | 隱私 + 節省空間 |
-| 拍照方式 | 內建相機 + 輔助框線 | 更好的引導 |
-| 失敗處理 | 手動輸入 / 重新拍攝 | 給用戶選擇 |
+| 拍照方式 | CameraX + 輔助框線 | 更好的引導 |
+| 失敗處理 | 重新拍攝 / 取消 | 給用戶選擇 |
+| ML Kit | 保留備用 | 離線場景可用 |
 
-### 2.5 辨識失敗處理
+### 2.6 辨識失敗處理
 
 ```
-收據太模糊、皺摺、光線差時：
+圖片過大、看不清楚、或 API 錯誤時：
 
-AI: 收據看不太清楚，只辨識到金額 $86
+顯示錯誤訊息：
+- "圖片過大: ..." → 壓縮後重試
+- "網路連線失敗" → 檢查網路
+- "AI 服務忙碌中" → 稍後再試
 
-    [手動輸入]  [重新拍攝]
+    [重新拍攝]  [取消]
 ```
 
 ---
@@ -453,6 +494,7 @@ suspend fun <T> retryOnError(
 |----------|------|------|
 | API Key 管理 | BuildConfig 內建 | MVP 簡單優先 |
 | Retry 機制 | 有，網路錯誤重試 2 次 | 提高穩定性 |
-| Gemini Model | gemini-1.5-flash | 快速便宜 |
+| Gemini Model | gemini-3-flash-preview | 快速、支援 Vision |
 | 輸出格式 | 強制 JSON mode | 回傳更穩定 |
 | Prompt 管理 | PromptBuilder 集中管理 | 方便維護 |
+| Vision 支援 | content { image() text() } | 收據掃描用 |

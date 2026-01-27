@@ -195,7 +195,7 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──┬──→ Phase 3 ──→
 
 ---
 
-## Phase 3: AI 功能整合
+## Phase 3: AI 功能整合 ✅
 
 **目標**：NLP 自然語言記帳 + 自動分類
 
@@ -203,110 +203,132 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──┬──→ Phase 3 ──→
 
 ### Checklist
 
-- [ ] **Gemini Service** (data/remote/gemini/)
-  - [ ] GeminiService.kt
-  - [ ] PromptBuilder.kt
-  - [ ] ParsedTransactionDto.kt
-  - [ ] NetworkModule.kt (Hilt)
+- [x] **Gemini Service** (data/remote/gemini/)
+  - [x] GeminiService.kt
+  - [x] PromptBuilder.kt
+  - [x] ParsedTransactionDto.kt
+  - [x] NetworkModule.kt (Hilt)
 
-- [ ] **AI Repository**
-  - [ ] AiRepository.kt (介面)
-  - [ ] AiRepositoryImpl.kt (實作)
+- [x] **AI Repository**
+  - [x] AiRepository.kt (介面)
+  - [x] AiRepositoryImpl.kt (實作)
 
-- [ ] **結果封裝**
-  - [ ] AiResult.kt
-  - [ ] AiException.kt
+- [x] **結果封裝**
+  - [x] AiResult.kt
+  - [x] AiException.kt
 
-- [ ] **Use Case** (domain/usecase/ai/)
-  - [ ] ParseNaturalInputUseCase.kt
-  - [ ] AutoCategorizeUseCase.kt
+- [x] **Use Case** (domain/usecase/ai/)
+  - [x] ParseNaturalInputUseCase.kt
+  - [x] AutoCategorizeUseCase.kt
+  - [x] ProcessUserInputUseCase.kt (新增)
 
-- [ ] **自動分類邏輯**
-  - [ ] CategoryMatcher.kt (規則引擎)
-  - [ ] DefaultRules.kt (商家/關鍵字規則)
+- [x] **自動分類邏輯**
+  - [x] 三層優先匹配 (用戶規則 > 關鍵字 > 商家 > AI)
+  - [x] 內建於 AutoCategorizeUseCase
 
 - [ ] **用戶學習機制**
   - [ ] 用戶修正時建立 UserCategoryRule
   - [ ] LearnCategoryUseCase.kt
 
-- [ ] **聊天頁面** (presentation/chat/)
-  - [ ] ChatScreen.kt
-  - [ ] ChatViewModel.kt
-  - [ ] ChatUiState.kt
-  - [ ] ChatBubble.kt
-  - [ ] ConfirmationCard.kt
-  - [ ] InputBar.kt
-  - [ ] FollowUpQuestion.kt
+- [x] **聊天頁面** (presentation/chat/)
+  - [x] ChatScreen.kt
+  - [x] ChatViewModel.kt
+  - [x] ChatUiState.kt
+  - [x] 訊息泡泡 (整合在 ChatScreen)
+  - [x] 確認卡片
+  - [x] 輸入欄 (含相機/麥克風按鈕)
 
 - [ ] **對話狀態管理**
   - [ ] PendingSession 暫存/讀取
   - [ ] 5 分鐘逾時清除
 
-- [ ] **語音輸入**
-  - [ ] SpeechRecognizer 整合
-  - [ ] 麥克風權限
+- [x] **語音輸入**
+  - [x] SpeechRecognitionHelper.kt
+  - [x] 麥克風權限 (RECORD_AUDIO)
 
-- [ ] **Retry 機制**
-  - [ ] 網路錯誤重試 2 次
+- [x] **Retry 機制**
+  - [x] 網路錯誤重試 2 次
 
 ### 驗收標準
 
-- [ ] 可以用「午餐便當 85」自動解析
+- [x] 可以用「午餐便當 85」自動解析
 - [ ] 缺少欄位時會追問
-- [ ] 確認卡片顯示，用戶確認後儲存
-- [ ] 自動分類準確度 > 80%
+- [x] 確認卡片顯示，用戶確認後儲存
+- [x] 自動分類準確度 > 80%
 - [ ] 用戶修正後會學習
-- [ ] 語音輸入可用
+- [x] 語音輸入可用
 
 **此時 App 展現 AI 價值**
 
 ---
 
-## Phase 4: OCR 收據掃描
+## Phase 4: OCR 收據掃描 ✅
 
 **目標**：拍照掃描收據
 
 **時程**：Day 17-20
 
+### 架構變更說明
+
+原本設計：`圖片 → ML Kit OCR → 文字 → Gemini 解析`
+
+**實際採用**：`圖片 → Gemini Vision 直接辨識` ✨
+
+原因：
+- Gemini Vision 可直接理解圖片，準確度更高
+- 減少中間步驟，降低錯誤傳遞
+- ML Kit OCR 會把所有文字都辨識（含雜訊），Gemini Vision 能自動過濾
+
 ### Checklist
 
-- [ ] **ML Kit OCR** (data/remote/ocr/)
-  - [ ] MlKitOcrService.kt
-  - [ ] OcrResult.kt
+- [x] **ML Kit OCR** (data/remote/ocr/) - 保留但改為備用
+  - [x] MlKitOcrService.kt
+  - [x] OcrResult.kt
 
-- [ ] **收據解析**
-  - [ ] ReceiptParseDto.kt
-  - [ ] 收據 Prompt 模板
-  - [ ] ParseReceiptUseCase.kt
+- [x] **收據解析**
+  - [x] ReceiptParseDto.kt
+  - [x] 收據 Prompt 模板 (buildReceiptImagePrompt)
+  - [x] ParseReceiptUseCase.kt
+  - [x] 圖片壓縮 (MAX_IMAGE_DIMENSION = 1024px)
 
-- [ ] **相機頁面** (presentation/camera/)
-  - [ ] CameraScreen.kt
-  - [ ] CameraViewModel.kt
-  - [ ] CameraPreview.kt (CameraX)
-  - [ ] ReceiptOverlay.kt (輔助框線)
-  - [ ] CaptureButton.kt
-  - [ ] ScanResultCard.kt
+- [x] **Gemini Vision 整合**
+  - [x] GeminiService.parseReceiptImage() - 直接傳圖片
+  - [x] content { image(bitmap) text(prompt) } 語法
 
-- [ ] **權限處理**
-  - [ ] 相機權限請求
-  - [ ] 權限被拒絕的提示
+- [x] **相機頁面** (presentation/camera/)
+  - [x] CameraScreen.kt
+  - [x] CameraViewModel.kt
+  - [x] CameraPreview.kt (CameraX)
+  - [x] CameraUiState.kt
+  - [x] 輔助框線 (整合在 CameraScreen)
+  - [x] 拍照按鈕 (整合在 CameraScreen)
+  - [x] 掃描結果編輯卡片
 
-- [ ] **失敗處理**
-  - [ ] 辨識失敗 UI
-  - [ ] 重新拍攝 / 手動輸入 選項
+- [x] **權限處理**
+  - [x] 相機權限請求
+  - [x] 權限被拒絕的提示
+
+- [x] **失敗處理**
+  - [x] 辨識失敗 UI
+  - [x] 重新拍攝 / 取消 選項
+  - [x] 詳細錯誤訊息 (token/quota/network)
+
+- [x] **交易儲存**
+  - [x] transactionSaved 狀態通知
+  - [x] 正確的異步儲存流程
 
 ### 驗收標準
 
-- [ ] 可以拍照
-- [ ] 輔助框線正確顯示
-- [ ] ML Kit 辨識文字成功
-- [ ] Gemini 解析收據結構
-- [ ] 顯示確認卡片
-- [ ] 儲存交易（不保存照片）
+- [x] 可以拍照
+- [x] 輔助框線正確顯示
+- [x] Gemini Vision 辨識收據
+- [x] 顯示確認/編輯卡片
+- [x] 儲存交易（不保存照片）
+- [x] 圖片壓縮避免過大
 
 ---
 
-## Phase 5: 分析與圖表
+## Phase 5: 分析與圖表 ✅
 
 **目標**：資料視覺化
 
@@ -314,41 +336,43 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──┬──→ Phase 3 ──→
 
 ### Checklist
 
-- [ ] **Use Case** (domain/usecase/analytics/)
-  - [ ] GetMonthlyStatsUseCase.kt
-  - [ ] GetCategoryBreakdownUseCase.kt
-  - [ ] GetDailyExpensesUseCase.kt
+- [x] **分析頁面** (presentation/analysis/)
+  - [x] AnalysisScreen.kt
+  - [x] AnalysisViewModel.kt
+  - [x] AnalysisUiState.kt
 
-- [ ] **分析頁面** (presentation/analysis/)
-  - [ ] AnalysisScreen.kt
-  - [ ] AnalysisViewModel.kt
-  - [ ] AnalysisUiState.kt
+- [x] **圖表元件** (presentation/analysis/components/)
+  - [x] PieChart.kt (自製 Canvas + 動畫)
+  - [x] 動畫效果 (800ms 進場動畫)
+  - [x] 點擊互動 (選擇切片高亮)
+  - [x] DailyExpenseChart.kt (Vico 長條圖)
+  - [x] MonthlyTrendChart.kt (Vico 折線圖)
+  - [x] TimeRangeSelector (SegmentedButton: 日/週/月/年)
+  - [x] SummaryCard (支出/收入/結餘)
 
-- [ ] **圖表元件** (presentation/analysis/components/)
-  - [ ] PieChart.kt (自製 Canvas)
-  - [ ] 動畫效果
-  - [ ] 點擊互動
-  - [ ] DailyExpenseChart.kt (Vico)
-  - [ ] MonthlyTrendChart.kt (Vico)
-  - [ ] TimeRangeSelector.kt
-  - [ ] SummaryCard.kt
-  - [ ] CategoryRankList.kt
+- [x] **類別交易列表** (presentation/categorytransactions/)
+  - [x] CategoryTransactionsScreen.kt
+  - [x] CategoryTransactionsViewModel.kt
+  - [x] CategoryTransactionsUiState.kt
 
-- [ ] **類別交易列表** (presentation/category/)
-  - [ ] CategoryTransactionsScreen.kt
-  - [ ] CategoryTransactionsViewModel.kt
+- [x] **圖表互動**
+  - [x] 圓餅圖點擊 → 跳轉類別交易列表
+  - [x] 類別列表點擊 → 跳轉類別交易列表
+  - [x] 時間範圍切換（日/週/月/年）
+  - [x] 年度視圖顯示月度趨勢折線圖
 
-- [ ] **圖表互動**
-  - [ ] 圓餅圖點擊 → 跳轉類別交易列表
-  - [ ] 時間範圍切換（日/週/月/年）
+- [x] **Vico 圖表庫**
+  - [x] 加入依賴 (vico-compose-m3:2.0.0-beta.3)
+  - [x] CartesianChartHost + rememberCartesianChart API
 
 ### 驗收標準
 
-- [ ] 圓餅圖顯示類別分佈
-- [ ] 長條圖顯示每日支出
-- [ ] 可切換時間範圍
-- [ ] 點擊圓餅圖跳轉正確
-- [ ] 動畫流暢
+- [x] 圓餅圖顯示類別分佈
+- [x] 長條圖顯示每日支出
+- [x] 折線圖顯示月度趨勢（年度視圖）
+- [x] 可切換時間範圍
+- [x] 點擊圓餅圖/類別跳轉正確
+- [x] 動畫流暢
 
 **MVP 完成！**
 
@@ -409,9 +433,10 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──┬──→ Phase 3 ──→
 
 ### Phase 5 結束時 (Day 25)
 
-- [ ] 圓餅圖、長條圖正常顯示
-- [ ] 可切換時間範圍
-- [ ] 點擊圖表有互動
+- [x] 圓餅圖、長條圖正常顯示
+- [x] 折線圖顯示月度趨勢
+- [x] 可切換時間範圍
+- [x] 點擊圖表有互動
 
 **MVP 完成！**
 

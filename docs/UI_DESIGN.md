@@ -450,3 +450,167 @@ val progressColor = when {
     else -> Color(0xFFE53935)              // 紅色
 }
 ```
+
+---
+
+## UI 優化實作紀錄 (2026-01-27)
+
+### 1. 圓餅圖圖例 (Pie Chart Legend)
+
+**檔案**: `presentation/analysis/AnalysisScreen.kt`
+
+在分析頁面的圓餅圖下方加入互動式圖例，顯示各類別的顏色、名稱、金額與百分比。
+
+```kotlin
+// 圓餅圖圖例
+Spacer(modifier = Modifier.height(12.dp))
+PieChartLegend(
+    slices = currentData.toPieSlices(),
+    onSliceClick = { categoryId ->
+        selectedSliceId = if (selectedSliceId == categoryId) null else categoryId
+    },
+    modifier = Modifier.padding(horizontal = 8.dp)
+)
+```
+
+**功能**:
+- 點擊圖例可高亮對應的圓餅圖區塊
+- 顯示類別顏色圓點、名稱、金額、百分比
+
+---
+
+### 2. 交易項目分類圖標 (Transaction Category Icons)
+
+**檔案**:
+- `presentation/home/HomeScreen.kt`
+- `presentation/home/HomeUiState.kt`
+- `presentation/home/HomeViewModel.kt`
+- `presentation/history/HistoryScreen.kt`
+- `presentation/history/HistoryUiState.kt`
+- `presentation/history/HistoryViewModel.kt`
+
+在首頁和歷史頁面的交易項目中加入分類圖標和顏色背景。
+
+#### 資料結構
+
+```kotlin
+data class TransactionWithCategory(
+    val transaction: Transaction,
+    val category: Category?
+)
+```
+
+#### ViewModel 組合
+
+```kotlin
+combine(
+    getTransactionsUseCase(),
+    getCategoriesUseCase()
+) { transactions, categories ->
+    val categoryMap = categories.associateBy { it.id }
+    transactions.map { tx ->
+        TransactionWithCategory(tx, categoryMap[tx.categoryId])
+    }
+}
+```
+
+#### UI 呈現
+
+```kotlin
+// 左側分類圖標
+Box(
+    modifier = Modifier
+        .size(40.dp)
+        .background(categoryColor, shape = CircleShape),
+    contentAlignment = Alignment.Center
+) {
+    Icon(
+        imageVector = getCategoryIcon(category?.icon),
+        contentDescription = category?.name,
+        tint = Color.White,
+        modifier = Modifier.size(24.dp)
+    )
+}
+```
+
+#### 圖標對應表
+
+| 圖標名稱 | Material Icon |
+|----------|---------------|
+| restaurant | Icons.Default.Restaurant |
+| directions_car | Icons.Default.DirectionsCar |
+| shopping_bag | Icons.Default.ShoppingBag |
+| home | Icons.Default.Home |
+| sports_esports | Icons.Default.SportsEsports |
+| local_hospital | Icons.Default.LocalHospital |
+| school | Icons.Default.School |
+| work | Icons.Default.Work |
+| trending_up | Icons.Default.TrendingUp |
+| card_giftcard | Icons.Default.CardGiftcard |
+| attach_money | Icons.Default.AttachMoney |
+| (其他) | Icons.Default.Category |
+
+---
+
+### 3. 日期選擇器 (Date Picker)
+
+**檔案**:
+- `presentation/edit/EditTransactionScreen.kt`
+- `presentation/manual/ManualInputScreen.kt`
+
+在編輯交易和手動輸入頁面加入 Material3 DatePicker。
+
+#### 實作方式
+
+```kotlin
+// 狀態管理
+var showDatePicker by remember { mutableStateOf(false) }
+val datePickerState = rememberDatePickerState(
+    initialSelectedDateMillis = uiState.date
+        .atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
+)
+
+// 日期顯示欄位
+OutlinedTextField(
+    value = uiState.date.format(DateTimeFormatter.ofPattern("yyyy/MM/dd")),
+    onValueChange = {},
+    label = { Text("日期") },
+    readOnly = true,
+    trailingIcon = {
+        IconButton(onClick = { showDatePicker = true }) {
+            Icon(Icons.Default.DateRange, contentDescription = "選擇日期")
+        }
+    },
+    modifier = Modifier.fillMaxWidth()
+)
+
+// DatePicker Dialog
+if (showDatePicker) {
+    DatePickerDialog(
+        onDismissRequest = { showDatePicker = false },
+        confirmButton = {
+            TextButton(onClick = {
+                datePickerState.selectedDateMillis?.let { millis ->
+                    val selectedDate = Instant.ofEpochMilli(millis)
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    onDateChange(selectedDate)
+                }
+                showDatePicker = false
+            }) { Text("確認") }
+        },
+        dismissButton = {
+            TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+```
+
+**功能**:
+- 點擊日期欄位右側的日曆圖標開啟選擇器
+- 支援選擇任意日期
+- 選擇後自動更新 UiState
