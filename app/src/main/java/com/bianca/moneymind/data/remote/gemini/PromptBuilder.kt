@@ -48,7 +48,7 @@ class PromptBuilder @Inject constructor() {
       "merchantName": "商家名稱" 或 null,
       "categoryId": "類別ID"（從可用類別中選擇最接近的）,
       "description": "描述",
-      "missingFields": ["amount", "category"] 等缺少的欄位,
+      "missingFields": ["amount", "categoryId"] 等缺少的欄位,
       "confidence": 0.0-1.0 的信心度
     }
   ]
@@ -57,9 +57,9 @@ class PromptBuilder @Inject constructor() {
 ## 規則
 1. 可能有多筆交易（如「早餐80、午餐85」），全部解析
 2. 金額沒有明確數字 → amount 為 null，missingFields 加入 "amount"
-3. 日期沒提到 → 用今天；「昨天」→ 今天減一天
-4. "薪水"、"入帳"、"收入" 等關鍵字 → type 為 "INCOME"
-5. categoryId 必須從可用類別中選擇
+3. categoryId 必須從可用類別中選擇最接近的；若不確定 → missingFields 加入 "categoryId" 讓用戶確認
+4. 日期沒提到 → 用今天；「昨天」→ 今天減一天
+5. "薪水"、"入帳"、"收入" 等關鍵字 → type 為 "INCOME"
 6. 回傳純 JSON，不要有 ```json 等標記
 """.trimIndent()
     }

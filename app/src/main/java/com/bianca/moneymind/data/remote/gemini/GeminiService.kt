@@ -38,7 +38,7 @@ class GeminiService @Inject constructor(
                 temperature = 0.3f
                 topK = 32
                 topP = 0.95f
-                maxOutputTokens = 1024
+                maxOutputTokens = 4096
             }
         )
     }
